@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	parser := argparse.NewParser("Crimson Spary","An smart password sprayer for Internal network security assessments.")
+	parser := argparse.NewParser("Crimson Spary","A lockout aware password sprayer for Internal network security assessments.")
 	var userFilePathArg = parser.String("u","username-file",&argparse.Options{Required: true,Help: "File of users separated by newlines"})
 	var passFilePathArg = parser.String("p","password-file",&argparse.Options{Required: true,Help: "File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
 	var domainArg = parser.String("d","domain",&argparse.Options{Required: true})
