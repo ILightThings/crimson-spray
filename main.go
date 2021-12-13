@@ -26,9 +26,11 @@ func main() {
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
+	} else {
+		multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime ,*lockTime,*verboseArg)
 	}
 
-	multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime ,*lockTime,*verboseArg)
+
 }
 
 func singleUserSpray(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int64,verbose bool) {
