@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	parser := argparse.NewParser("crimson-spary", "A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
+	parser := argparse.NewParser("crimson-spray", "A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
 	var userFilePathArg = parser.String("u", "username-file", &argparse.Options{Required: true, Help: "(Required) File of users separated by newlines"})
 	var passFilePathArg = parser.String("p", "password-file", &argparse.Options{Required: true, Help: "(Required) File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
 	var domainArg = parser.String("d", "domain", &argparse.Options{Required: true, Help: "(Required) Domain of user "})
