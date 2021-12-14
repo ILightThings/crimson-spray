@@ -10,10 +10,10 @@ usage: Crimson Spary [-h|--help] -u|--username-file "<value>"
                      -p|--password-file "<value>" -d|--domain "<value>"
                      -t|--target "<value>" -a|--Lockout-Threshold <integer>
                      -l|--Lockout-Reset <integer> -r|--Lockout-Timer <integer>
-                     [-v|--verbose]
+                     [--bypass-wait] [--no-stats] [-v|--verbose]
 
-                    A lockout aware password sprayer for Internal network security
-                     assessments.
+                     A lockout aware password sprayer for Internal network
+                     security assessments.
 
 Arguments:
 
@@ -31,7 +31,10 @@ Arguments:
   -r  --Lockout-Timer      Duration of time in minutes for an locked out
                            account to become unlocked. If account lockout is
                            detected, program will wait this time + 1 minute.
+      --bypass-wait        Bypass initial lock threshold reset period
+      --no-stats           Suppress stats banner. Default: false
   -v  --verbose            Print Debug. Default: false
+
 ```
 
 
@@ -41,7 +44,10 @@ Todo:
 - [ ] Add a pause and resume feature. 
 - [ ] Add a lockout check before ever attempt (Will need working creds)
 - [ ] Add LDAP as a protocol method
-- [ ] Add estimated timer completeion
+- [ ] Add estimated timer completion
 - [ ] Add Jitter option
-- [ ] Add a default flag to wait lockout threshold before beginning
+- [x] Add a default flag to wait lockout threshold before beginning
+- [ ] Add different attack modes
+- [ ] Add an option for max concurrent users
+- [x] Add a pre-Spray Stats display
 
