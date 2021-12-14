@@ -1,11 +1,17 @@
-Placeholder text.
+Crimson-Spray is a lockout aware password sprayer for active directory testing. The goal of this tool was allow password spraying without having lock out end user accounts. Most tools do allow throttling, but this tool aim to make locking out accounts less of an issue.
 
-Use -h for usage.
+Safe Guard Features:
+- This tool will always wait 1 minute more the then the lockout time and the lockout reset threshold (If user enter `-l 5`, crimeson-spray will wait 6 minutes.)
+- This tool will wait the lockout reset threshold before beginning (bypass with --bypass-wait)
+- If detected that an account is locked out, crimson-red will wait the lockout duration (`-r <int>`) before resuming for that user.
+- Each user has their own thread. A single lockout will not prevent other user attempts from proceeding with their guess, nor will it effect the order passwords are guess.
+- Once a password has been confirmed as working, attempts for that user will cease.
 
+`go run crimson-red -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15 -v 1`
 
-`go run main.go -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15` 
+This command will run 9 password attempts then wait 6 minutes before trying another 9 attempts. If the account is detected to be locked out, it will wait 16 minutes before trying more passwords. This will only show success messages. 
 
-This command will run 9 password attempts then wait 6 minutes before trying another 9 attempts. If the account is detected to be locked out, it will wait 16 minutes before trying more passwords. 
+`--help` output
 ```
 usage: crimson-spary [-h|--help] -u|--username-file "<value>"
                      -p|--password-file "<value>" -d|--domain "<value>"

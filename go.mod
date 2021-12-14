@@ -1,4 +1,4 @@
-module github.com/crimson_sailor
+module github.com/ILightThings/crimson-spray
 
 go 1.17
 

@@ -101,7 +101,7 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 					break
 				} else if result == 2 {
 					log.Printf("User account %s is locked out.\n", users)
-					break
+					break //will reattempt password before incrementing the loop.
 				}
 				currentPasswordIndex++
 			}
