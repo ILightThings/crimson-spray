@@ -3,14 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/akamensky/argparse"
-	"github.com/hirochachacha/go-smb2"
 	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/akamensky/argparse"
+	"github.com/hirochachacha/go-smb2"
 )
 
 func main() {
