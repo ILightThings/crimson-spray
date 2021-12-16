@@ -8,7 +8,7 @@ Safe Guard Features:
 - Each user has their own thread. A single lockout will not prevent other user attempts from proceeding with their guess, nor will it effect the order passwords are guess.
 - Once a password has been confirmed as working, attempts for that user will cease.
 
-`crimson-red -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15 -v 1`
+`crimson-spray -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15 -v 1`
 
 This command will run 9 password attempts then wait 6 minutes before trying another 9 attempts. If the account is detected to be locked out, it will wait 16 minutes before trying more passwords. This will only show success messages. 
 
