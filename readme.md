@@ -10,19 +10,20 @@ Safe Guard Features:
 
 `crimson-spray -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15 -v 1`
 
-This command will run 9 password attempts then wait 6 minutes before trying another 9 attempts. If the account is detected to be locked out, it will wait 16 minutes before trying more passwords. This will only show success messages. 
+This command will run 9 password attempts then wait 6 minutes before trying another 9 attempts. If the account is detected to be locked out, it will wait 16 minutes before trying more passwords. This will only show success messages.
 
 `--help` output
 ```
 usage: crimson-spray [-h|--help] -u|--username-file "<value>"
-                     -p|--password-file "<value>" -d|--domain "<value>"       
-                     -t|--target "<value>" -a|--Lockout-Threshold <integer>   
+                     -p|--password-file "<value>" -d|--domain "<value>"
+                     -t|--target "<value>" -a|--Lockout-Threshold <integer>
                      -l|--Lockout-Reset <integer> -r|--Lockout-Timer <integer>
-                     [--bypass-wait] [--no-stats] [-v|--verbose <integer>]    
+                     [--bypass-wait] [--no-stats] [-v|--verbose <integer>]
+                     [-o|--logfile "<value>"] [--no-console]
 
-                     (v.0.1.1) A lockout aware password sprayer for Active    
-                     Directory. Please enter the raw net accounts /domain     
-                     variables for best results. It is also advisable to use  
+                     (v.0.2.0) A lockout aware password sprayer for Active
+                     Directory. Please enter the raw net accounts /domain
+                     variables for best results. It is also advisable to use
                      this against service accounts.
 
 Arguments:
@@ -47,14 +48,13 @@ Arguments:
 
       --bypass-wait        Bypass initial lock threshold reset period
       --no-stats           Suppress stats banner. Default: false
-  -v  --verbose            0 - No output (will disable prerun stats) | 1 -
-                           Success Messages | 2 - Lockout , Pause , and Success
-                           Messages | 3 - Attempts, Pause, Lockout and Success
-                           Messages | 4 - Debug Messages. Default: 2
-
+  -v  --verbose            0 - Reserved | 1 - Success Messages | 2 - Lockout ,
+                           Pause , and Success Messages | 3 - Attempts, Pause,
+                           Lockout and Success Messages | 4 - Debug Messages.
+                           Default: 2
+  -o  --logfile            If defined, output log to file. Default:
+      --no-console         No console output
 ```
-
-
 
 ---
 ## Considerations before running
@@ -63,6 +63,7 @@ Arguments:
 - **Don't** run `rockyou.txt` or any other giant wordlist. It will just increase the time considerably. This is a tool for weak password that could be easily guesses. Check out https://weakpass.com/generate for good password generation.
 - At the moment, this tool does not limit how many users at once it can do. Try to limit your users list to only service accounts, high value targets, or hand picked users.
 - Consider the password policy and don't include passwords that don't meet the required length or complexity. This might be set independantly for certain groups.
+- If running on a non interactive session, consider using `--no-console` and `--logfile <file` to output to a file.
 
 --- 
 ## Installation instructions
@@ -82,7 +83,7 @@ Windows:
 Alternatively, add the GOPATH/bin to your env:PATH variable.
 
 ### Todo:
-- [ ] Add a pause and resume feature. 
+- [ ] Add a pause and resume feature.
 - [ ] Add a lockout check before ever attempt (Will need working creds)
 - [ ] Add LDAP as a protocol method
 - [x] Add estimated timer completion
@@ -95,5 +96,5 @@ Alternatively, add the GOPATH/bin to your env:PATH variable.
 - [x] Verbose Levels
 - [ ] Add a message for account password expiry
 - [ ] Check for duplicates in passwordlist and username list
-- [ ] Add Output to file
+- [x] Add Output to file
 - [x] Trim whitespace

