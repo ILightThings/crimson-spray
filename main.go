@@ -70,7 +70,7 @@ func main() {
 
 	// Print Usage and exit
 	if err != nil {
-		log.Println(parser.Usage(err))
+		fmt.Println(parser.Usage(err))
 		os.Exit(1)
 	}
 
@@ -84,7 +84,7 @@ func main() {
 		time.Sleep(time.Duration(*lockThreshTime) * time.Minute)
 	}
 
-	log.Printf("Starting Spray..... ")
+	log.Printf("Starting Spray.....\n")
 	multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
 }
 
