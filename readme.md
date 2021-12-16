@@ -4,9 +4,9 @@
 Crimson-Spray is a lockout aware password sprayer for active directory testing. The goal of this tool was allow password spraying without having lock out end user accounts. Most tools do allow throttling, but this tool aim to make locking out accounts less of an issue.
 
 Safe Guard Features:
-@@ -10,22 +7,22 @@ Safe Guard Features:
 - Each user has their own thread. A single lockout will not prevent other user attempts from proceeding with their guess, nor will it effect the order passwords are guess.
 - Once a password has been confirmed as working, attempts for that user will cease.
+- If account is detected to be lockedout, crimson-spray will wait the duration of lockout period plus an additional minute.
 
 `crimson-spray -u ".\testcase\users.txt" -p ".\testcase\passwords.txt" -d "attack.local" -t "10.255.0.2" -a 10 -l 5 -r 15 -v 1`
 
