@@ -244,8 +244,6 @@ func readFile(filepath string) []string {
 	return entries
 }
 
-
-
 /*
 Verbose levels:
 0 - No output
