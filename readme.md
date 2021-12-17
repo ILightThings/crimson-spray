@@ -58,12 +58,12 @@ Arguments:
 
 ---
 ## Considerations before running
-- Although the command `net accounts /domain` will show you the lockout policy in the current context, the Domain may have seperate policys for different user groups and you may end up locking out accounts. Default verbosity is set to show when lockouts occur.
+- Although the command `net accounts /domain` will show you the lockout policy in the current context, the Domain may have separate policy's for different user groups and you may end up locking out accounts. Default verbosity is set to show when lockouts occur.
 - Ensure there is no duplicates in the usernames list. This will cause a lockout as they are run twice.
 - **Don't** run `rockyou.txt` or any other giant wordlist. It will just increase the time considerably. This is a tool for weak password that could be easily guesses. Check out https://weakpass.com/generate for good password generation.
-- At the moment, this tool does not limit how many users at once it can do. Try to limit your users list to only service accounts, high value targets, or hand picked users.
-- Consider the password policy and don't include passwords that don't meet the required length or complexity. This might be set independantly for certain groups.
-- If running on a non interactive session, consider using `--no-console` and `--logfile <file` to output to a file.
+- At the moment, this tool does not limit how many users at once it can do. Try to limit your users list to only service accounts, high value targets, or handpicked users.
+- Consider the password policy and don't include passwords that don't meet the required length or complexity. This might be set independently for certain groups.
+- If running on a non interactive session, consider using `--no-console` and `--logfile <file>` to output to a file.
 
 --- 
 ## Installation instructions
@@ -98,3 +98,6 @@ Alternatively, add the GOPATH/bin to your env:PATH variable.
 - [ ] Check for duplicates in passwordlist and username list
 - [x] Add Output to file
 - [x] Trim whitespace
+- [ ] Spray across multiple IPs
+
+
