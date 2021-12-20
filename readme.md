@@ -16,10 +16,11 @@ This command will run 9 password attempts then wait 6 minutes before trying anot
 ```
 usage: crimson-spray [-h|--help] -u|--username-file "<value>"
                      -p|--password-file "<value>" -d|--domain "<value>"
-                     -t|--target "<value>" -a|--Lockout-Threshold <integer>
-                     -l|--Lockout-Reset <integer> -r|--Lockout-Timer <integer>
-                     [--bypass-wait] [--no-stats] [-v|--verbose <integer>]
-                     [-o|--logfile "<value>"] [--no-console]
+                     -t|--target "<value>" -a|--Lockout-Attempt-Threshold
+                     <integer> -l|--Lockout-Attempt-Threshold-Timer <integer>
+                     -r|--Lockout-Timer <integer> [--bypass-wait] [--no-stats]
+                     [-v|--verbose <integer>] [-o|--logfile "<value>"]
+                     [--no-console] [-T|--max-threads <integer>]
 
                      (v.0.2.0) A lockout aware password sprayer for Active
                      Directory. Please enter the raw net accounts /domain
@@ -28,32 +29,42 @@ usage: crimson-spray [-h|--help] -u|--username-file "<value>"
 
 Arguments:
 
-  -h  --help               Print help information
-  -u  --username-file      (Required) File of users separated by newlines
-  -p  --password-file      (Required) File of passwords seperated by newlines.
-                           A good wordlist generator can be found at
-                           https://weakpass.com/generate
-  -d  --domain             (Required) Domain of user
-  -t  --target             (Required) IP or Hostname of target to authenticate
-                           against
-  -a  --Lockout-Threshold  (Required) Number of passwords attempts before
-                           lockout. Attempts will not exceed this amount - 1.
-  -l  --Lockout-Reset      (Required) Duration of time in minutes for the
-                           threshold timer to elapse. An addition minute is
-                           added
-  -r  --Lockout-Timer      (Required) Duration of time in minutes for an locked
-                           out account to become unlocked. If account lockout
-                           is detected, program will wait this time + 1
-                           minute.
+  -h  --help                             Print help information
+  -u  --username-file                    (Required) File of users separated by
+                                         newlines
+  -p  --password-file                    (Required) File of passwords seperated
+                                         by newlines. A good wordlist generator
+                                         can be found at
+                                         https://weakpass.com/generate
+  -d  --domain                           (Required) Domain of user
+  -t  --target                           (Required) IP or Hostname of target to
+                                         authenticate against
+  -a  --Lockout-Attempt-Threshold        (Required) Number of passwords
+                                         attempts before lockout. Attempts will
+                                         not exceed this amount - 1.
+  -l  --Lockout-Attempt-Threshold-Timer  (Required) Duration of time in minutes
+                                         for the threshold timer to elapse. An
+                                         addition minute is added
+  -r  --Lockout-Timer                    (Required) Duration of time in minutes
+                                         for an locked out account to become
+                                         unlocked. If account lockout is
+                                         detected, program will wait this time
+                                         + 1 minute.
 
-      --bypass-wait        Bypass initial lock threshold reset period
-      --no-stats           Suppress stats banner. Default: false
-  -v  --verbose            0 - Reserved | 1 - Success Messages | 2 - Lockout ,
-                           Pause , and Success Messages | 3 - Attempts, Pause,
-                           Lockout and Success Messages | 4 - Debug Messages.
-                           Default: 2
-  -o  --logfile            If defined, output log to file. Default:
-      --no-console         No console output
+      --bypass-wait                      Bypass initial lock threshold reset
+                                         period
+      --no-stats                         Suppress stats banner. Default: false
+  -v  --verbose                          0 - Reserved | 1 - Success Messages |
+                                         2 - Lockout , Pause , and Success
+                                         Messages | 3 - Attempts, Pause,
+                                         Lockout and Success Messages | 4 -
+                                         Debug Messages. Default: 2
+  -o  --logfile                          If defined, output log to file.
+                                         Default:
+      --no-console                       No console output
+  -T  --max-threads                      Max number threads to user. 1 per
+                                         user. Default is the user list length.
+                                         0 is unlimited. Default: 0
 ```
 
 ---
@@ -90,7 +101,7 @@ Alternatively, add the GOPATH/bin to your env:PATH variable.
 - [ ] Add Jitter option
 - [x] Add a default flag to wait lockout threshold before beginning
 - [ ] Add different attack modes
-- [ ] Add an option for max concurrent users
+- [x] Add an option for max concurrent users
 - [x] Add a pre-Spray Stats display
 - [ ] Add found_users.txt file for output
 - [x] Verbose Levels
