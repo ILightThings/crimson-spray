@@ -133,7 +133,7 @@ func preRunStats(usernamePath string, passwordPath string, domain string, target
 
 	}
 	fmt.Println()
-	fmt.Println("crimson-spray v0.1.1")
+	fmt.Println("crimson-spray v0.2.0")
 	fmt.Printf("Imported Users: %d\n", userListLen)
 	fmt.Printf("Imported Passwords: %d\n", passwordListLen)
 	fmt.Println()

@@ -12,3 +12,4 @@
 *.out
 /testlogfile.txt
 text.txt
+.idea/workspace.xml
